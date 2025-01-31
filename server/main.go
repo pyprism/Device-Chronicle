@@ -9,76 +9,77 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// WebSocket upgrader
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
 }
 
-type SignalServer struct {
+// Store active clients
+type WebSocketServer struct {
 	clients map[string]*websocket.Conn
 	mu      sync.Mutex
 }
 
-func NewSignalServer() *SignalServer {
-	return &SignalServer{
+func NewWebSocketServer() *WebSocketServer {
+	return &WebSocketServer{
 		clients: make(map[string]*websocket.Conn),
 	}
 }
 
-func (s *SignalServer) handleSignaling(c *gin.Context) {
-	clientID := c.Query("client_id") // Get client_id from query
+// WebSocket handler for clients
+func (s *WebSocketServer) handleClient(c *gin.Context) {
+	clientID := c.Query("client_id")
 	if clientID == "" {
-		fmt.Println("Error: client_id is required")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "client_id is required"})
 		return
 	}
 
-	fmt.Println("Client connecting:", clientID)
-
-	// Upgrade to WebSocket connection
+	// Upgrade connection
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		fmt.Println("Failed to upgrade WebSocket:", err)
+		fmt.Println("WebSocket upgrade failed:", err)
 		return
 	}
 	defer conn.Close()
 
-	// Store client connection
+	// Store connection
 	s.mu.Lock()
 	s.clients[clientID] = conn
 	s.mu.Unlock()
 
 	fmt.Println("Client connected:", clientID)
 
-	// Listen for messages from client
+	// Listen for messages
 	for {
-		_, message, err := conn.ReadMessage()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			fmt.Println("Client disconnected:", clientID)
 			break
 		}
-		fmt.Printf("Received from %s: %s\n", clientID, string(message))
+		fmt.Printf("Received from %s: %s\n", clientID, string(msg))
 
-		// Relay messages if needed
-		s.broadcastMessage(clientID, message)
+		// Broadcast message
+		s.broadcast(clientID, msg)
 	}
 
-	// Remove client when they disconnect
+	// Remove client when disconnected
 	s.mu.Lock()
 	delete(s.clients, clientID)
 	s.mu.Unlock()
 }
 
-func (s *SignalServer) broadcastMessage(senderID string, message []byte) {
+// Broadcast message to all connected clients
+func (s *WebSocketServer) broadcast(senderID string, msg []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for clientID, conn := range s.clients {
-		if clientID != senderID {
-			err := conn.WriteMessage(websocket.TextMessage, message)
+		if clientID != senderID { // Don't send back to the sender
+			err := conn.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
-				fmt.Printf("Failed to send message to %s: %v\n", clientID, err)
+				fmt.Printf("Error sending to %s: %v\n", clientID, err)
 			}
 		}
 	}
@@ -86,10 +87,11 @@ func (s *SignalServer) broadcastMessage(senderID string, message []byte) {
 
 func main() {
 	r := gin.Default()
-	signalServer := NewSignalServer()
+	wsServer := NewWebSocketServer()
 
-	// Accept WebSocket connections
-	r.GET("/signal", signalServer.handleSignaling)
+	// WebSocket endpoint
+	r.GET("/ws", wsServer.handleClient)
 
+	// Run server
 	r.Run(":8080")
 }
