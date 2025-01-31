@@ -85,13 +85,26 @@ func (s *WebSocketServer) broadcast(senderID string, msg []byte) {
 	}
 }
 
+// **New API to list all connected clients**
+func (s *WebSocketServer) listClients(c *gin.Context) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	clientIDs := []string{}
+	for clientID := range s.clients {
+		clientIDs = append(clientIDs, clientID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"clients": clientIDs})
+}
+
 func main() {
 	r := gin.Default()
 	wsServer := NewWebSocketServer()
 
 	// WebSocket endpoint
 	r.GET("/ws", wsServer.handleClient)
-
+	r.GET("/clients", wsServer.listClients)
 	// Run server
 	r.Run(":8080")
 }
