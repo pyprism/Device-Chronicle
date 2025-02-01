@@ -2,7 +2,6 @@ package config
 
 import (
 	"device-chronicle-server/utils"
-	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	limits "github.com/gin-contrib/size"
@@ -42,7 +41,7 @@ func NewRouter() *gin.Engine {
 func Init() {
 	r := NewRouter()
 	serverPort := utils.GetEnv("SERVER_PORT", "8000")
-	fmt.Println("Server running on http://127.0.0.1:" + serverPort)
+	Logger.Info("Server running on http://127.0.0.1:" + serverPort)
 	err := r.Run(":" + serverPort)
 	if err != nil {
 		panic(err)
