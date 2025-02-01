@@ -1,4 +1,4 @@
-package routers
+package config
 
 import (
 	"device-chronicle-server/utils"
