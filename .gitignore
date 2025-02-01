@@ -1,7 +1,8 @@
 # Created by https://www.toptal.com/developers/gitignore/api/go,jetbrains,goland
 # Edit at https://www.toptal.com/developers/gitignore?templates=go,jetbrains,goland
 .idea/
-server/.env_example
+server/.env
+server/main
 ### Go ###
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore

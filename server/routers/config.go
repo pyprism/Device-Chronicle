@@ -12,14 +12,16 @@ import (
 	"time"
 )
 
+var Logger *zap.Logger
+
 func NewRouter() *gin.Engine {
 	router := gin.New()
 	router.Static("/static", "./static")
 	router.LoadHTMLGlob("templates/*.html")
 
-	logger, _ := zap.NewProduction()
-	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
-	router.Use(ginzap.RecoveryWithZap(logger, true))
+	Logger, _ = zap.NewProduction()
+	router.Use(ginzap.Ginzap(Logger, time.RFC3339, true))
+	router.Use(ginzap.RecoveryWithZap(Logger, true))
 	if utils.GetEnv("DEBUG", "false") == "false" {
 		gin.SetMode(gin.ReleaseMode)
 	}
