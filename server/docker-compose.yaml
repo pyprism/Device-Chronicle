@@ -1,0 +1,14 @@
+services:
+  device-chronicle:
+    container_name: "device-chronicle"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:{SERVER_PORT}:{SERVER_PORT}"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    args:
+      - TZ={TIMEZONE}
