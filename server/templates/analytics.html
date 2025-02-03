@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics for Client {{ .client_id }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #messages { border: 1px solid #ddd; padding: 10px; width: 50%; height: 300px; overflow-y: scroll; }
+    </style>
+</head>
+<body>
+<h2>Analytics for Client {{ .client_id }}</h2>
+<div id="messages"></div>
+
+<script>
+    const clientID = "{{ .client_id }}";
+    const host = window.location.hostname;
+    const port = window.location.port;
+    const ws = new WebSocket(`ws://${host}:${port}/analytics_ws/${clientID}`);
+
+    ws.onmessage = function(event) {
+        const messageDiv = document.createElement("div");
+        messageDiv.textContent = event.data;
+        document.getElementById("messages").appendChild(messageDiv);
+    };
+
+    ws.onopen = function() {
+        console.log("Connected to analytics WebSocket");
+    };
+
+    ws.onerror = function(error) {
+        console.log("WebSocket Error:", error);
+    };
+</script>
+</body>
+</html>
