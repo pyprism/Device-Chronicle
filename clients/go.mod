@@ -1,4 +1,4 @@
-module heat-chronicle-client
+module device-chronicle-client
 
 go 1.23.3
 
