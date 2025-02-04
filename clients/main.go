@@ -1,7 +1,7 @@
 package main
 
 import (
-	"device-chronicle-client/utils"
+	"device-chronicle-client/websocket"
 	"flag"
 	"log"
 )
@@ -15,16 +15,5 @@ func main() {
 		log.Fatalln("Server address is required. Usage: ./chronicle --server ws://localhost:8000")
 	}
 
-	//data := make(map[string]interface{})
-	//var err error
-	//
-	//if runtime.GOOS == "linux" {
-	//	data, err = os.Linux()
-	//}
-	//if err != nil {
-	//	log.Println("Error getting data:", err)
-	//	return
-	//}
-
-	utils.Websocket(serverAddr)
+	websocket.Websocket(serverAddr)
 }
