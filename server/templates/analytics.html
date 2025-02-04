@@ -6,12 +6,13 @@
     <title>Analytics for Client {{ .client_id }}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
-        #messages { border: 1px solid #ddd; padding: 10px; width: 50%; height: 300px; overflow-y: scroll; }
+        #chart { width: 100%; height: 600px; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 </head>
 <body>
 <h2>Analytics for Client {{ .client_id }}</h2>
-<div id="messages"></div>
+<div id="chart"></div>
 
 <script>
     const clientID = "{{ .client_id }}";
@@ -19,10 +20,63 @@
     const port = window.location.port;
     const ws = new WebSocket(`ws://${host}:${port}/analytics_ws/${clientID}`);
 
+    const chartDom = document.getElementById('chart');
+    const myChart = echarts.init(chartDom);
+    const option = {
+        title: {
+            text: 'System Analytics'
+        },
+        tooltip: {
+            trigger: 'axis'
+        },
+        legend: {
+            data: ['Average Chipset Temp', 'CPU Temp', 'Free RAM', 'Used RAM', 'Used RAM Percentage', 'Packets Received', 'Packets Sent']
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: []
+        },
+        yAxis: {
+            type: 'value'
+        },
+        series: [
+            { name: 'Average Chipset Temp', type: 'line', data: [] },
+            { name: 'CPU Temp', type: 'line', data: [] },
+            { name: 'Free RAM', type: 'line', data: [] },
+            { name: 'Used RAM', type: 'line', data: [] },
+            { name: 'Used RAM Percentage', type: 'line', data: [] },
+            { name: 'Packets Received', type: 'line', data: [] },
+            { name: 'Packets Sent', type: 'line', data: [] }
+        ]
+    };
+    myChart.setOption(option);
+
     ws.onmessage = function(event) {
-        const messageDiv = document.createElement("div");
-        messageDiv.textContent = event.data;
-        document.getElementById("messages").appendChild(messageDiv);
+        const data = JSON.parse(event.data);
+        console.log(data);
+        const time = new Date().toLocaleTimeString();
+
+        option.xAxis.data.push(time);
+        if (option.xAxis.data.length > 20) {
+            option.xAxis.data.shift();
+        }
+
+        option.series[0].data.push(data.average_chipset_temp);
+        option.series[1].data.push(data.cpu_temp);
+        option.series[2].data.push(parseFloat(data.free_ram));
+        option.series[3].data.push(parseFloat(data.used_ram));
+        option.series[4].data.push(parseFloat(data.used_ram_percentage));
+        option.series[5].data.push(parseFloat(data.packets_receive));
+        option.series[6].data.push(parseFloat(data.packets_sent));
+
+        option.series.forEach(series => {
+            if (series.data.length > 20) {
+                series.data.shift();
+            }
+        });
+
+        myChart.setOption(option);
     };
 
     ws.onopen = function() {
