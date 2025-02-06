@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var prevNetworkUsage *net.IOCountersStat
+
 func Linux() (map[string]interface{}, error) {
 	data := make(map[string]interface{})
 
@@ -39,6 +41,18 @@ func Linux() (map[string]interface{}, error) {
 		}
 	}
 
+	// Calculate network usage difference
+	if prevNetworkUsage != nil {
+		data["packets_sent"] = utils.FormatBytes(network[0].BytesSent - prevNetworkUsage.BytesSent)
+		data["packets_receive"] = utils.FormatBytes(network[0].BytesRecv - prevNetworkUsage.BytesRecv)
+	} else {
+		data["packets_sent"] = utils.FormatBytes(network[0].BytesSent)
+		data["packets_receive"] = utils.FormatBytes(network[0].BytesRecv)
+	}
+
+	// Update previous network usage
+	prevNetworkUsage = &network[0]
+
 	average = sum / float64(counter)
 	formattedAverage := fmt.Sprintf("%.2f", average)
 
@@ -53,8 +67,6 @@ func Linux() (map[string]interface{}, error) {
 	data["free_ram"] = utils.FormatBytes(memory.Free)
 	data["used_ram"] = utils.FormatBytes(memory.Used)
 	data["used_ram_percentage"] = fmt.Sprintf("%.2f", memory.UsedPercent)
-	data["packets_sent"] = utils.FormatBytes(network[0].PacketsSent)
-	data["packets_receive"] = utils.FormatBytes(network[0].PacketsRecv)
 	data["hostname"] = host_.Hostname
 	return data, nil
 }
