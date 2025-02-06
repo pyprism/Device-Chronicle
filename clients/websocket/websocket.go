@@ -33,9 +33,15 @@ func Websocket(serverAddr *string) {
 				continue
 			}
 
+			// if there is an error sending data, close the connection and reconnect
 			if err := sendData(conn, data); err != nil {
 				log.Println("Write error:", err)
-				return
+				conn.Close()
+				conn, err = connectToServer(serverAddr, clientID)
+				if err != nil {
+					log.Println("Failed to reconnect to WebSocket server:", err)
+					return
+				}
 			}
 		}
 	}
@@ -60,13 +66,6 @@ func connectToServer(serverAddr *string, clientID string) (*websocket.Conn, erro
 		return conn, nil
 	}
 }
-
-//func fetchData() (map[string]interface{}, error) {
-//	if runtime.GOOS == "linux" {
-//		return os.Linux()
-//	}
-//	return nil, fmt.Errorf("unsupported OS")
-//}
 
 func sendData(conn *websocket.Conn, data map[string]interface{}) error {
 	message, err := json.Marshal(data)
