@@ -38,7 +38,7 @@
             data: []
         },
         yAxis: {
-            type: 'value'
+            type: 'value',
         },
         series: [
             { name: 'Average Chipset Temp', type: 'line', data: [] },
@@ -58,7 +58,7 @@
         const time = new Date().toLocaleTimeString();
 
         option.xAxis.data.push(time);
-        if (option.xAxis.data.length > 20) {
+        if (option.xAxis.data.length > 50) {
             option.xAxis.data.shift();
         }
 
@@ -71,7 +71,7 @@
         option.series[6].data.push(parseFloat(data.packets_sent));
 
         option.series.forEach(series => {
-            if (series.data.length > 20) {
+            if (series.data.length > 50) {
                 series.data.shift();
             }
         });
