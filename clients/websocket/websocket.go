@@ -1,7 +1,7 @@
 package websocket
 
 import (
-	data2 "device-chronicle-client/data"
+	fetch "device-chronicle-client/data"
 	"device-chronicle-client/utils"
 	"encoding/json"
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func Websocket(serverAddr *string) {
+func Websocket(serverAddr *string, dummy *bool) {
 	clientID := generateClientID()
 	log.Println("Sending data to WebSocket server with Client ID:", clientID)
 
@@ -27,10 +27,15 @@ func Websocket(serverAddr *string) {
 	for {
 		select {
 		case <-ticker.C:
-			data, err := data2.FetchData()
-			if err != nil {
-				log.Println("Error getting data:", err)
-				continue
+			data, err := map[string]interface{}{}, error(nil)
+			if *dummy {
+				data = utils.DummyData()
+			} else {
+				data, err = fetch.FetchData()
+				if err != nil {
+					log.Println("Error getting data:", err)
+					continue
+				}
 			}
 
 			// if there is an error sending data, close the connection and reconnect
