@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"device-chronicle-server/config"
+	"device-chronicle-server/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +16,7 @@ var serverCmd = &cobra.Command{
 	Long:  `Start the server to serve the web app.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		//models.ConnectDb()
+		logger.Init()
 		config.Init()
 	},
 }

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"device-chronicle-server/config"
+	"device-chronicle-server/logger"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"os"
@@ -19,7 +19,7 @@ var RootCmd = &cobra.Command{
 
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
-		config.Logger.Error("Execution error:", zap.Error(err))
+		logger.Logger.Error("Execution error:", zap.Error(err))
 		os.Exit(1)
 	}
 }

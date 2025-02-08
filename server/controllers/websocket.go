@@ -1,9 +1,10 @@
 package controllers
 
 import (
-	"fmt"
+	"device-chronicle-server/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 	"html/template"
 	"net/http"
 	"sync"
@@ -41,7 +42,7 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 	// Upgrade to WebSocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		fmt.Println("WebSocket upgrade failed:", err)
+		logger.Logger.Error("WebSocket upgrade failed:", zap.Error(err))
 		return
 	}
 	defer conn.Close()
@@ -51,16 +52,16 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 	s.clients[clientID] = conn
 	s.mu.Unlock()
 
-	fmt.Println("Client connected:", clientID)
+	logger.Logger.Info("Client connected:" + clientID)
 
 	// Read messages from client
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			fmt.Println("Client disconnected:", clientID)
+			logger.Logger.Info("Client disconnected: " + clientID)
 			break
 		}
-		fmt.Printf("Received from %s: %s\n", clientID, string(msg))
+		logger.Logger.Info("Received from client", zap.String("clientID", clientID), zap.String("message", string(msg)))
 
 		// Forward message to analytics WebSocket if connected
 		s.mu.Lock()
@@ -94,7 +95,7 @@ func (s *WebSocketServer) HandleAnalytics(c *gin.Context) {
 	// Upgrade connection
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		fmt.Println("WebSocket upgrade failed:", err)
+		logger.Logger.Error("WebSocket upgrade failed: ", zap.Error(err))
 		return
 	}
 	defer conn.Close()
@@ -104,13 +105,13 @@ func (s *WebSocketServer) HandleAnalytics(c *gin.Context) {
 	s.analyticsConn[clientID] = conn
 	s.mu.Unlock()
 
-	fmt.Println("Analytics client connected for:", clientID)
+	logger.Logger.Info("Analytics client connected for: " + clientID)
 
 	// Keep the connection open
 	for {
 		_, _, err := conn.ReadMessage()
 		if err != nil {
-			fmt.Println("Analytics disconnected:", clientID)
+			logger.Logger.Info("Analytics disconnected: " + clientID)
 			break
 		}
 	}
