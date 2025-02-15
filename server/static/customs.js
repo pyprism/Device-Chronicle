@@ -5,17 +5,9 @@ function webSocket() {
     const ws = new WebSocket(`ws://${host}:${port}/analytics_ws/${clientID}`);
 
     const chartDom = document.getElementById('chart');
-    const myChart = echarts.init(chartDom);
+    const chartDevice = echarts.init(chartDom);
 
     const option = {
-        // title: {
-        //     text: 'System Analytics',
-        //     textStyle: {
-        //         fontSize: 18,
-        //         fontWeight: 'bold'
-        //     },
-        //     padding: [10, 0, 0, 0]
-        // },
         tooltip: {
             trigger: 'axis'
         },
@@ -35,27 +27,27 @@ function webSocket() {
             type: 'value',
         },
         series: [
-            { name: 'Average Chipset Temp', type: 'line', data: [] },
-            { name: 'CPU Temp', type: 'line', data: [] },
-            { name: 'Free RAM', type: 'line', data: [] },
-            { name: 'Used RAM', type: 'line', data: [] },
-            { name: 'Used RAM Percentage', type: 'line', data: [] },
-            { name: 'Packets Received', type: 'line', data: [] },
-            { name: 'Packets Sent', type: 'line', data: [] }
+            { name: 'Average Chipset Temp', type: 'line', data: [], markPoint: { data: [] } },
+            { name: 'CPU Temp', type: 'line', data: [], markPoint: { data: [] } },
+            { name: 'Free RAM', type: 'line', data: [], markPoint: { data: [] } },
+            { name: 'Used RAM', type: 'line', data: [], markPoint: { data: [] } },
+            { name: 'Used RAM Percentage', type: 'line', data: [], markPoint: { data: [] } },
+            { name: 'Packets Received', type: 'line', data: [], markPoint: { data: [] } },
+            { name: 'Packets Sent', type: 'line', data: [], markPoint: { data: [] } }
         ]
     };
 
-    myChart.setOption(option);
+    chartDevice.setOption(option);
 
-// Keep track of the current legend selection and update it when the legend is clicked
-    let currentLegend = myChart.getOption().legend[0].selected;
-    myChart.on('legendselectchanged', function(params) {
+    // Keep track of the current legend selection and update it when the legend is clicked
+    let currentLegend = chartDevice.getOption().legend[0].selected;
+    chartDevice.on('legendselectchanged', function(params) {
         currentLegend = { ...params.selected };
     });
 
+
     ws.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        console.log(data);
         const time = new Date().toLocaleTimeString();
 
         option.xAxis.data.push(time);
@@ -63,18 +55,30 @@ function webSocket() {
             option.xAxis.data.shift();
         }
 
-        option.series[0].data.push({ value: parseFloat(data.average_chipset_temp), unit: data.average_chipset_temp});
-        option.series[1].data.push({ value: parseFloat(data.cpu_temp), unit: data.cpu_temp});
-        option.series[2].data.push({ value: parseFloat(data.free_ram), unit: data.free_ram});
-        option.series[3].data.push({ value: parseFloat(data.used_ram), unit: data.used_ram});
-        option.series[4].data.push({ value: parseFloat(data.used_ram_percentage), unit: data.used_ram_percentage});
-        option.series[5].data.push({ value: parseFloat(data.packets_receive), unit: data.packets_receive});
-        option.series[6].data.push({ value: parseFloat(data.packets_sent), unit: data.packets_sent});
+        const seriesData = [
+            { value: parseFloat(data.average_chipset_temp), unit: data.average_chipset_temp },
+            { value: parseFloat(data.cpu_temp), unit: data.cpu_temp },
+            { value: parseFloat(data.free_ram), unit: data.free_ram },
+            { value: parseFloat(data.used_ram), unit: data.used_ram },
+            { value: parseFloat(data.used_ram_percentage), unit: data.used_ram_percentage },
+            { value: parseFloat(data.packets_receive), unit: data.packets_receive },
+            { value: parseFloat(data.packets_sent), unit: data.packets_sent }
+        ];
 
-        option.series.forEach(series => {
-            if (series.data.length > 500) {
-                series.data.shift();
+        seriesData.forEach((item, index) => {
+            option.series[index].data.push(item);
+            if (option.series[index].data.length > 500) {
+                option.series[index].data.shift();
             }
+
+            const values = option.series[index].data.map(d => d.value);
+            const maxValue = Math.max(...values);
+            const minValue = Math.min(...values);
+
+            option.series[index].markPoint.data = [
+                { type: 'max', name: 'Max', value: maxValue },
+                { type: 'min', name: 'Min', value: minValue }
+            ];
         });
 
         option.tooltip = {
@@ -88,7 +92,7 @@ function webSocket() {
             }
         };
         option.legend.selected = currentLegend;
-        myChart.setOption(option);
+        chartDevice.setOption(option);
     };
 
     ws.onopen = function() {
@@ -106,13 +110,12 @@ function webSocket() {
     };
 
     window.addEventListener('resize', function() {
-        myChart.resize();
+        chartDevice.resize();
     });
-
 }
 
+
 function setChartDimensions() {
-    console.log("Setting chart dimensions");
     const chartDiv = document.getElementById('chart');
     const screenHeight = window.innerHeight;
     const screenWidth = window.innerWidth;
