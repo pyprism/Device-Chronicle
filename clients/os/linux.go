@@ -54,7 +54,7 @@ func Linux() (map[string]interface{}, error) {
 	prevNetworkUsage = &network[0]
 
 	average = sum / float64(counter)
-	formattedAverage := fmt.Sprintf("%.2f", average)
+	formattedAverage := fmt.Sprintf("%.2f°C", average)
 
 	// CPU usage per core
 	for i, percentage := range cpu_ {
@@ -62,11 +62,11 @@ func Linux() (map[string]interface{}, error) {
 	}
 	// Add data to map
 	data["average_chipset_temp"] = formattedAverage
-	data["cpu_temp"] = cpuTemp
+	data["cpu_temp"] = fmt.Sprintf("%.2f°C", cpuTemp)
 	data["total_ram"] = utils.FormatBytes(memory.Total)
 	data["free_ram"] = utils.FormatBytes(memory.Free)
 	data["used_ram"] = utils.FormatBytes(memory.Used)
-	data["used_ram_percentage"] = fmt.Sprintf("%.2f", memory.UsedPercent)
+	data["used_ram_percentage"] = fmt.Sprintf("%.2f%%", memory.UsedPercent)
 	data["hostname"] = host_.Hostname
 	return data, nil
 }
