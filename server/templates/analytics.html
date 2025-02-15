@@ -2,113 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Analytics for Client {{ .client_id }}</title>
+    <link href="/static/libs/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #chart { width: 100%; height: 600px; }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #chart {
+            width: 100%;
+            height: 70vh; /* Set height to 70% of the viewport height */
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            font-size: 1.5em;
+            color: #007bff;
+        }
+        .error {
+            display: none;
+            text-align: center;
+            font-size: 1.5em;
+            color: red;
+        }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 </head>
 <body>
-<h2>Analytics for Client {{ .client_id }}</h2>
-<div id="chart"></div>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="/">Device Chronicle</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link" target="_blank" href="https://github.com/pyprism/Device-Chronicle">Github</a>
+        </li>
+    </ul>
+    </div>
+</nav>
+<div class="container-fluid">
+    <h2 class="mt-4" style="text-align: center">Analytics for Client {{ .client_id }}</h2>
+    <div id="chart" class="mt-4" role="img" aria-label="Analytics Chart"></div>
+    <div class="loading" id="loading">Loading...</div>
+    <div class="error" id="error">Failed to load data. Please try again later.</div>
+</div>
 
 <script>
-    const clientID = "{{ .client_id }}";
-    const host = window.location.hostname;
-    const port = window.location.port;
-    const ws = new WebSocket(`ws://${host}:${port}/analytics_ws/${clientID}`);
-
-    const chartDom = document.getElementById('chart');
-    const myChart = echarts.init(chartDom);
-
-    const option = {
-        title: {
-            text: 'System Analytics'
-        },
-        tooltip: {
-            trigger: 'axis'
-        },
-        legend: {
-            data: ['Average Chipset Temp', 'CPU Temp', 'Free RAM', 'Used RAM', 'Used RAM Percentage', 'Packets Received', 'Packets Sent'],
-            selected: {
-                'Packets Received': false,
-                'Packets Sent': false
-            }
-        },
-        xAxis: {
-            type: 'category',
-            boundaryGap: false,
-            data: []
-        },
-        yAxis: {
-            type: 'value',
-        },
-        series: [
-            { name: 'Average Chipset Temp', type: 'line', data: [] },
-            { name: 'CPU Temp', type: 'line', data: [] },
-            { name: 'Free RAM', type: 'line', data: [] },
-            { name: 'Used RAM', type: 'line', data: [] },
-            { name: 'Used RAM Percentage', type: 'line', data: [] },
-            { name: 'Packets Received', type: 'line', data: [] },
-            { name: 'Packets Sent', type: 'line', data: [] }
-        ]
-    };
-
-    myChart.setOption(option);
-
-    // Keep track of the current legend selection and update it when the legend is clicked
-    let currentLegend = myChart.getOption().legend[0].selected;
-    myChart.on('legendselectchanged', function(params) {
-        currentLegend = { ...params.selected };
-    });
-
-    ws.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        console.log(data);
-        const time = new Date().toLocaleTimeString();
-
-        option.xAxis.data.push(time);
-        if (option.xAxis.data.length > 500) {
-            option.xAxis.data.shift();
-        }
-
-        option.series[0].data.push({ value: parseFloat(data.average_chipset_temp), unit: data.average_chipset_temp});
-        option.series[1].data.push({ value: parseFloat(data.cpu_temp), unit: data.cpu_temp});
-        option.series[2].data.push({ value: parseFloat(data.free_ram), unit: data.free_ram});
-        option.series[3].data.push({ value: parseFloat(data.used_ram), unit: data.used_ram});
-        option.series[4].data.push({ value: parseFloat(data.used_ram_percentage), unit: data.used_ram_percentage});
-        option.series[5].data.push({ value: parseFloat(data.packets_receive), unit: data.packets_receive});
-        option.series[6].data.push({ value: parseFloat(data.packets_sent), unit: data.packets_sent});
-
-        option.series.forEach(series => {
-            if (series.data.length > 500) {
-                series.data.shift();
-            }
-        });
-
-        option.tooltip = {
-            trigger: 'axis',
-            formatter: function(params) {
-                let result = params[0].axisValue + '<br/>';
-                params.forEach(item => {
-                    result += item.marker + item.seriesName + ': ' + item.data.unit + '<br/>';
-                });
-                return result;
-            }
-        };
-        option.legend.selected = currentLegend;
-        myChart.setOption(option);
-    };
-
-    ws.onopen = function() {
-        console.log("Connected to analytics WebSocket");
-    };
-
-    ws.onerror = function(error) {
-        console.log("WebSocket Error:", error);
-    };
+    window.clientID = "{{ .client_id }}";
 </script>
+<script src="/static/libs/bootstrap.bundle.min.js" ></script>
+<script src="/static/libs/echarts.min.js"></script>
+<script src="/static/customs.js"></script>
 </body>
 </html>
