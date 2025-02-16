@@ -1,4 +1,4 @@
-FROM golang:1.23.5-alpine3.21
+FROM golang:1.24.0-alpine3.21
 
 RUN apk add --no-cache inotify-tools gcc g++ musl-dev tzdata
 
@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . /app
 
-RUN go install github.com/cosmtrek/air@latest
+RUN go install github.com/air-verse/air@latest
 
 ARG TZ=UTC
 ENV TZ=$TZ

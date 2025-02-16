@@ -4,11 +4,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - TZ=${TIMEZONE}
     ports:
-      - "127.0.0.1:{SERVER_PORT}:{SERVER_PORT}"
+      - "127.0.0.1:${SERVER_PORT}:${SERVER_PORT}"
     volumes:
       - .:/app
     env_file:
       - .env
-    args:
-      - TZ={TIMEZONE}
