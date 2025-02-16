@@ -18,8 +18,12 @@ func NewRouter() *gin.Engine {
 
 	router.Use(ginzap.Ginzap(logger.Logger, time.RFC3339, true))
 	router.Use(ginzap.RecoveryWithZap(logger.Logger, true))
-	if utils.GetEnv("DEBUG", "false") == "false" {
+
+	if debug := utils.GetEnv("DEBUG", "false"); debug == "false" {
+		logger.Logger.Info("Setting Gin to Release Mode")
 		gin.SetMode(gin.ReleaseMode)
+	} else {
+		logger.Logger.Info("Gin is running in Debug Mode")
 	}
 
 	router.SetTrustedProxies([]string{"127.0.0.1"})
