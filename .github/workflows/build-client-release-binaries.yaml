@@ -24,7 +24,7 @@ jobs:
         run: echo ${{ github.event.release.tag_name }}
 
       - name: Build the executables
-        run: ./clients/build-executables.sh ${{ github.event.release.tag_name }}
+        run: cd clients && ./build-executables.sh ${{ github.event.release.tag_name }}
 
       - name: List the executables
         run: ls -l ./clients/release
