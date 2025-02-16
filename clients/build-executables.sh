@@ -7,15 +7,15 @@ if [[ -z "$version" ]]; then
 fi
 package_name=chronicle-client
 
-#
+
 # The full list of the platforms is at: https://golang.org/doc/install/source#environment
 platforms=(
-"darwin/amd64"
-"darwin/arm64"
+#"darwin/amd64"
+#"darwin/arm64"
 "linux/amd64"
 "linux/arm"
 "linux/arm64"
-"windows/amd64"
+#"windows/amd64"
 )
 
 rm -rf release/
