@@ -1,9 +1,11 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory:
-      - "client/"
-      - "server/"
+    directory: "client/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "server/"
     schedule:
       interval: "daily"
   - package-ecosystem: "docker"
