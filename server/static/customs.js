@@ -1,8 +1,20 @@
+function extractUnit(value) {
+    const match = value.match(/[°a-zA-Z%]+/);
+    return match ? match[0] : '';
+}
+
+function formatValue(value) {
+    const numericValue = parseFloat(value);
+    const unit = extractUnit(value);
+    return { value: numericValue, unit: unit };
+}
+
 function webSocket() {
     const clientID = window.clientID;
     const host = window.location.hostname;
     const port = window.location.port;
-    const ws = new WebSocket(`ws://${host}:${port}/analytics_ws/${clientID}`);
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${protocol}://${host}:${port}/analytics_ws/${clientID}`);
 
     const chartDom = document.getElementById('chart');
     const chartDevice = echarts.init(chartDom);
@@ -48,6 +60,7 @@ function webSocket() {
 
     ws.onmessage = function(event) {
         const data = JSON.parse(event.data);
+        console.log(data)
         const time = new Date().toLocaleTimeString();
 
         option.xAxis.data.push(time);
@@ -56,13 +69,13 @@ function webSocket() {
         }
 
         const seriesData = [
-            { value: parseFloat(data.average_chipset_temp), unit: data.average_chipset_temp },
-            { value: parseFloat(data.cpu_temp), unit: data.cpu_temp },
-            { value: parseFloat(data.free_ram), unit: data.free_ram },
-            { value: parseFloat(data.used_ram), unit: data.used_ram },
-            { value: parseFloat(data.used_ram_percentage), unit: data.used_ram_percentage },
-            { value: parseFloat(data.packets_receive), unit: data.packets_receive },
-            { value: parseFloat(data.packets_sent), unit: data.packets_sent }
+            formatValue(data.average_chipset_temp),
+            formatValue(data.cpu_temp),
+            formatValue(data.free_ram),
+            formatValue(data.used_ram),
+            formatValue(data.used_ram_percentage),
+            formatValue(data.packets_receive),
+            formatValue(data.packets_sent)
         ];
 
         seriesData.forEach((item, index) => {
@@ -76,8 +89,8 @@ function webSocket() {
             const minValue = Math.min(...values);
 
             option.series[index].markPoint.data = [
-                { type: 'max', name: 'Max', value: maxValue },
-                { type: 'min', name: 'Min', value: minValue }
+                { type: 'max', name: 'Max', value: maxValue, label: { formatter: `{c} ${item.unit}` } },
+                { type: 'min', name: 'Min', value: minValue, label: { formatter: `{c} ${item.unit}` } }
             ];
         });
 
@@ -86,7 +99,7 @@ function webSocket() {
             formatter: function(params) {
                 let result = params[0].axisValue + '<br/>';
                 params.forEach(item => {
-                    result += item.marker + item.seriesName + ': ' + item.data.unit + '<br/>';
+                    result += item.marker + item.seriesName + ': ' + item.data.value + ' ' + item.data.unit + '<br/>';
                 });
                 return result;
             }
