@@ -1,0 +1,16 @@
+services:
+  device-chronicle:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      args:
+        - TZ=${TIMEZONE}
+    container_name: device-chronicle
+    env_file:
+      - .env
+    volumes:
+      - ./storage/:/app/storage/
+    ports:
+      - "127.0.0.1:${SERVER_PORT}:${SERVER_PORT}"
+    restart: always
+    command: ["/app/main", "server"]

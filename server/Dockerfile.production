@@ -1,0 +1,30 @@
+FROM golang:1.24.0-alpine3.21 AS builder
+
+WORKDIR /app
+
+RUN apk add --no-cache gcc g++ musl-dev
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=1 CGO_CFLAGS="-D_LARGEFILE64_SOURCE" GOOS=linux go build -a -ldflags "-linkmode external -extldflags '-static' -s -w" -o main
+
+# Minimal image for running the application
+FROM alpine:3.21 as final
+
+WORKDIR /app
+
+COPY --from=builder /app/main /app/main
+
+RUN mkdir templates
+COPY --from=builder /app/templates/ /app/templates/
+COPY --from=builder /app/static/ /app/static/
+
+RUN apk add --no-cache tini tzdata
+
+ARG TZ=UTC
+ENV TZ=$TZ
+
+ENTRYPOINT ["/sbin/tini", "--"]
