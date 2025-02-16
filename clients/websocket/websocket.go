@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
+	"strings"
 	"time"
 )
 
-func Websocket(serverAddr *string, dummy *bool) {
-	clientID := generateClientID()
+func Websocket(serverAddr *string, dummy *bool, interval *int, clientName *string) {
+	clientID := *clientName
 	log.Println("Sending data to WebSocket server with Client ID:", clientID)
 
 	conn, err := connectToServer(serverAddr, clientID)
@@ -21,7 +22,7 @@ func Websocket(serverAddr *string, dummy *bool) {
 	}
 	defer conn.Close()
 
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(time.Duration(*interval) * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -57,7 +58,16 @@ func generateClientID() string {
 }
 
 func connectToServer(serverAddr *string, clientID string) (*websocket.Conn, error) {
-	serverURL := fmt.Sprintf("%s/ws?client_id=%s", *serverAddr, clientID)
+	protocol := "ws"
+	if strings.HasPrefix(*serverAddr, "https") {
+		protocol = "wss"
+	}
+
+	// Remove http/https from serverAddr
+	trimmedAddr := strings.TrimPrefix(*serverAddr, "http://")
+	trimmedAddr = strings.TrimPrefix(trimmedAddr, "https://")
+
+	serverURL := fmt.Sprintf("%s://%s/ws?client_id=%s", protocol, trimmedAddr, clientID)
 	retryInterval := 5 * time.Second
 
 	for {
