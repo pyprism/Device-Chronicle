@@ -26,8 +26,8 @@ import (
 //}
 
 func TestServeAnalyticsPage(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	router := gin.Default()
+	router.LoadHTMLGlob("../templates/*")
 	wsServer := NewWebSocketServer()
 	router.GET("/analytics/:client_id", wsServer.ServeAnalyticsPage)
 
