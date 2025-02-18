@@ -1,13 +1,14 @@
 package controllers
 
 import (
-	"device-chronicle-server/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 	"net/http"
 	"sync"
 )
+
+type Option func(*WebSocketServer)
 
 // WebSocket upgrader
 var upgrader = websocket.Upgrader{
@@ -19,15 +20,34 @@ var upgrader = websocket.Upgrader{
 // WebSocketServer Store active clients and WebSocket connections for analytics
 type WebSocketServer struct {
 	clients       map[string]*websocket.Conn
-	analyticsConn map[string]*websocket.Conn // Store WebSocket connections for analytics
-	mu            sync.Mutex
+	analyticsConn map[string]*websocket.Conn
+	mu            sync.RWMutex // Add mutex for thread safety
+	logger        *zap.Logger
 }
 
-func NewWebSocketServer() *WebSocketServer {
-	return &WebSocketServer{
+func WithLogger(logger *zap.Logger) Option {
+	return func(ws *WebSocketServer) {
+		ws.logger = logger
+	}
+}
+
+func NewWebSocketServer(opts ...Option) *WebSocketServer {
+	ws := &WebSocketServer{
 		clients:       make(map[string]*websocket.Conn),
 		analyticsConn: make(map[string]*websocket.Conn),
 	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(ws)
+	}
+
+	// Set default logger if none provided
+	if ws.logger == nil {
+		ws.logger, _ = zap.NewProduction()
+	}
+
+	return ws
 }
 
 // HandleClient Handle client WebSocket connection on /ws
@@ -41,7 +61,7 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 	// Upgrade to WebSocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		logger.Logger.Error("WebSocket upgrade failed:", zap.Error(err))
+		s.logger.Error("WebSocket upgrade failed:", zap.Error(err))
 		return
 	}
 	defer conn.Close()
@@ -51,16 +71,16 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 	s.clients[clientID] = conn
 	s.mu.Unlock()
 
-	logger.Logger.Info("Client connected:" + clientID)
+	s.logger.Info("Client connected", zap.String("clientID", clientID))
 
 	// Read messages from client
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			logger.Logger.Info("Client disconnected: " + clientID)
+			s.logger.Info("Client disconnected", zap.String("clientID", clientID))
 			break
 		}
-		logger.Logger.Info("Received from client", zap.String("clientID", clientID), zap.String("message", string(msg)))
+		s.logger.Info("Received from client", zap.String("clientID", clientID), zap.String("message", string(msg)))
 
 		// Forward message to analytics WebSocket if connected
 		s.mu.Lock()
@@ -84,14 +104,24 @@ func (s *WebSocketServer) ServeAnalyticsPage(c *gin.Context) {
 	})
 }
 
-// Handle WebSocket for analytics
+// HandleAnalytics Handle WebSocket for analytics
 func (s *WebSocketServer) HandleAnalytics(c *gin.Context) {
 	clientID := c.Param("client_id")
 
-	// Upgrade connection
+	// Check if client is connected
+	s.mu.RLock()
+	_, exists := s.clients[clientID]
+	s.mu.RUnlock()
+
+	if !exists {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	// Only upgrade to WebSocket if client exists
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		logger.Logger.Error("WebSocket upgrade failed: ", zap.Error(err))
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	defer conn.Close()
@@ -101,13 +131,13 @@ func (s *WebSocketServer) HandleAnalytics(c *gin.Context) {
 	s.analyticsConn[clientID] = conn
 	s.mu.Unlock()
 
-	logger.Logger.Info("Analytics client connected for: " + clientID)
+	s.logger.Info("Analytics client connected", zap.String("clientID", clientID))
 
 	// Keep the connection open
 	for {
 		_, _, err := conn.ReadMessage()
 		if err != nil {
-			logger.Logger.Info("Analytics disconnected: " + clientID)
+			s.logger.Info("Analytics disconnected", zap.String("clientID", clientID))
 			break
 		}
 	}
