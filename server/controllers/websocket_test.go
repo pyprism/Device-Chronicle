@@ -15,8 +15,6 @@ import (
 
 // Helper function for test setup
 func setupTest() *testSetup {
-	gin.SetMode(gin.TestMode)
-
 	// Initialize logger for testing
 	logger, _ := zap.NewDevelopment()
 
