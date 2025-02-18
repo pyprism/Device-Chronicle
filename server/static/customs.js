@@ -1,5 +1,6 @@
 function extractUnit(value) {
-    const match = value.match(/[°a-zA-Z%]+/);
+    const strValue = String(value);
+    const match = strValue.match(/[°a-zA-Z%]+/);
     return match ? match[0] : '';
 }
 
