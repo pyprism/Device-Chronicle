@@ -5,7 +5,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
-	"html/template"
 	"net/http"
 	"sync"
 )
@@ -77,15 +76,12 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 	s.mu.Unlock()
 }
 
-// Serve analytics HTML page
+// ServeAnalyticsPage Serve analytics HTML page
 func (s *WebSocketServer) ServeAnalyticsPage(c *gin.Context) {
 	clientID := c.Param("client_id")
-	tmpl, err := template.ParseFiles("templates/analytics.html")
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Error loading template")
-		return
-	}
-	tmpl.Execute(c.Writer, gin.H{"client_id": clientID})
+	c.HTML(http.StatusOK, "analytics.html", gin.H{
+		"client_id": clientID,
+	})
 }
 
 // Handle WebSocket for analytics
