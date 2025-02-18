@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,29 +13,36 @@ import (
 	"time"
 )
 
+// Helper function for test setup
+func setupTest() *testSetup {
+	gin.SetMode(gin.TestMode)
+
+	// Initialize logger for testing
+	logger, _ := zap.NewDevelopment()
+
+	ts := &testSetup{
+		wsServer: NewWebSocketServer(WithLogger(logger)),
+		router:   gin.New(),
+	}
+	ts.server = httptest.NewServer(ts.router)
+	return ts
+}
+
 type testSetup struct {
-	router   *gin.Engine
 	wsServer *WebSocketServer
+	router   *gin.Engine
 	server   *httptest.Server
 }
 
-func setupTest() *testSetup {
-	router := gin.Default()
-	wsServer := NewWebSocketServer()
-	return &testSetup{
-		router:   router,
-		wsServer: wsServer,
-	}
-}
-
-func setupWebSocketServer(ts *testSetup) {
-	ts.server = httptest.NewServer(ts.router)
+// Helper function to setup a test client
+func setupTestClient(ts *testSetup, clientID string) (*websocket.Conn, *http.Response, error) {
+	wsURL := "ws" + strings.TrimPrefix(ts.server.URL, "http") + "/ws?client_id=" + clientID
+	return websocket.DefaultDialer.Dial(wsURL, nil)
 }
 
 func TestHandleClient(t *testing.T) {
 	ts := setupTest()
 	ts.router.GET("/ws", ts.wsServer.HandleClient)
-	setupWebSocketServer(ts)
 	defer ts.server.Close()
 
 	tests := []struct {
@@ -42,34 +50,39 @@ func TestHandleClient(t *testing.T) {
 		clientID string
 		wantErr  bool
 	}{
-		{"valid client", "test-client", false},
-		{"empty client id", "", true},
+		{"valid_client", "test-client", false},
+		{"empty_client_id", "", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wsURL := "ws" + strings.TrimPrefix(ts.server.URL, "http") + "/ws"
-			if tt.clientID != "" {
-				wsURL += "?client_id=" + tt.clientID
-			}
-
-			ws, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
 			if tt.wantErr {
-				assert.Error(t, err)
+				resp, err := http.Get(ts.server.URL + "/ws")
+				require.NoError(t, err)
+				defer resp.Body.Close()
+				assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 				return
 			}
+
+			// Test WebSocket connection
+			ws, _, err := setupTestClient(ts, tt.clientID)
 			require.NoError(t, err)
 			defer ws.Close()
 
-			assert.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
+			// Wait for connection registration
+			time.Sleep(50 * time.Millisecond)
+
+			// Verify client connection
+			ts.wsServer.mu.RLock()
+			client, exists := ts.wsServer.clients[tt.clientID]
+			ts.wsServer.mu.RUnlock()
+			assert.True(t, exists)
+			assert.NotNil(t, client)
 
 			// Test message sending
 			message := []byte("test message")
 			err = ws.WriteMessage(websocket.TextMessage, message)
 			require.NoError(t, err)
-
-			// Verify client is registered
-			assert.Contains(t, ts.wsServer.clients, tt.clientID)
 		})
 	}
 }
@@ -109,30 +122,52 @@ func TestServeAnalyticsPage(t *testing.T) {
 
 func TestHandleAnalytics(t *testing.T) {
 	ts := setupTest()
+	ts.router.GET("/ws", ts.wsServer.HandleClient)
 	ts.router.GET("/analytics/ws/:client_id", ts.wsServer.HandleAnalytics)
-	setupWebSocketServer(ts)
 	defer ts.server.Close()
 
 	tests := []struct {
 		name     string
 		clientID string
+		wantErr  bool
 	}{
-		{"valid analytics connection", "test-client"},
+		{"valid analytics connection", "test-client", false},
+		{"invalid client id", "non-existent", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wsURL := "ws" + strings.TrimPrefix(ts.server.URL, "http") + "/analytics/ws/" + tt.clientID
+			if !tt.wantErr {
+				// Setup client connection first
+				clientWS, _, err := setupTestClient(ts, tt.clientID)
+				require.NoError(t, err)
+				defer clientWS.Close()
+				time.Sleep(50 * time.Millisecond)
+			}
 
-			ws, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			// Test analytics connection
+			httpURL := "http" + strings.TrimPrefix(ts.server.URL, "http") + "/analytics/ws/" + tt.clientID
+			resp, err := http.Get(httpURL)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			if tt.wantErr {
+				assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+				return
+			}
+
+			// Test WebSocket connection
+			wsURL := "ws" + strings.TrimPrefix(ts.server.URL, "http") + "/analytics/ws/" + tt.clientID
+			ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 			require.NoError(t, err)
 			defer ws.Close()
 
-			assert.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
-
-			// Verify analytics connection is registered
-			time.Sleep(100 * time.Millisecond) // Allow time for connection to be registered
-			assert.Contains(t, ts.wsServer.analyticsConn, tt.clientID)
+			// Verify analytics connection
+			time.Sleep(50 * time.Millisecond)
+			ts.wsServer.mu.RLock()
+			_, exists := ts.wsServer.analyticsConn[tt.clientID]
+			ts.wsServer.mu.RUnlock()
+			assert.True(t, exists)
 		})
 	}
 }
