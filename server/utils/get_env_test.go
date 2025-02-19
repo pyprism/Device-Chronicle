@@ -1,7 +1,6 @@
-package utils_test
+package utils
 
 import (
-	"device-chronicle-server/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -10,12 +9,12 @@ import (
 func TestGetEnv(t *testing.T) {
 	// Test case: No environment variable set
 	os.Unsetenv("MY_ENV")
-	value := utils.GetEnv("MY_ENV", "default_value")
+	value := GetEnv("MY_ENV", "default_value")
 	assert.Equal(t, "default_value", value)
 
 	// Test case: Environment variable set
 	os.Setenv("MY_ENV", "actual_value")
 	defer os.Unsetenv("MY_ENV")
-	value = utils.GetEnv("MY_ENV", "default_value")
+	value = GetEnv("MY_ENV", "default_value")
 	assert.Equal(t, "actual_value", value)
 }
