@@ -19,8 +19,8 @@ var upgrader = websocket.Upgrader{
 
 // WebSocketServer Store active clients and WebSocket connections for analytics
 type WebSocketServer struct {
-	clients       map[string]*websocket.Conn
-	analyticsConn map[string]*websocket.Conn
+	clients       map[string][]*websocket.Conn
+	analyticsConn map[string][]*websocket.Conn
 	mu            sync.RWMutex // Add mutex for thread safety
 	logger        *zap.Logger
 }
@@ -33,8 +33,8 @@ func WithLogger(logger *zap.Logger) Option {
 
 func NewWebSocketServer(opts ...Option) *WebSocketServer {
 	ws := &WebSocketServer{
-		clients:       make(map[string]*websocket.Conn),
-		analyticsConn: make(map[string]*websocket.Conn),
+		clients:       make(map[string][]*websocket.Conn),
+		analyticsConn: make(map[string][]*websocket.Conn),
 	}
 
 	// Apply options
@@ -68,7 +68,7 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 
 	// Store connection
 	s.mu.Lock()
-	s.clients[clientID] = conn
+	s.clients[clientID] = append(s.clients[clientID], conn)
 	s.mu.Unlock()
 
 	s.logger.Info("Client connected", zap.String("clientID", clientID))
@@ -77,22 +77,31 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			s.logger.Info("Client disconnected", zap.String("clientID", clientID))
+			s.logger.Info("Client disconnected", zap.String("clientID", clientID), zap.Error(err))
 			break
 		}
-		s.logger.Info("Received from client", zap.String("clientID", clientID), zap.String("message", string(msg)))
+		//s.logger.Info("Received from client", zap.String("clientID", clientID), zap.String("message", string(msg)))
 
 		// Forward message to analytics WebSocket if connected
-		s.mu.Lock()
-		if analyticsConn, ok := s.analyticsConn[clientID]; ok {
-			analyticsConn.WriteMessage(websocket.TextMessage, msg)
+		s.mu.RLock()
+		if analyticsConns, ok := s.analyticsConn[clientID]; ok {
+			for _, analyticsConn := range analyticsConns {
+				if err := analyticsConn.WriteMessage(websocket.TextMessage, msg); err != nil {
+					s.logger.Error("Failed to forward message to analytics", zap.String("clientID", clientID), zap.Error(err))
+				}
+			}
 		}
-		s.mu.Unlock()
+		s.mu.RUnlock()
 	}
 
 	// Remove client when disconnected
 	s.mu.Lock()
-	delete(s.clients, clientID)
+	for i, conn := range s.clients[clientID] {
+		if conn == conn {
+			s.clients[clientID] = append(s.clients[clientID][:i], s.clients[clientID][i+1:]...)
+			break
+		}
+	}
 	s.mu.Unlock()
 }
 
@@ -128,7 +137,7 @@ func (s *WebSocketServer) HandleAnalytics(c *gin.Context) {
 
 	// Store connection for analytics
 	s.mu.Lock()
-	s.analyticsConn[clientID] = conn
+	s.analyticsConn[clientID] = append(s.analyticsConn[clientID], conn)
 	s.mu.Unlock()
 
 	s.logger.Info("Analytics client connected", zap.String("clientID", clientID))
@@ -137,18 +146,23 @@ func (s *WebSocketServer) HandleAnalytics(c *gin.Context) {
 	for {
 		_, _, err := conn.ReadMessage()
 		if err != nil {
-			s.logger.Info("Analytics disconnected", zap.String("clientID", clientID))
+			s.logger.Info("Analytics disconnected", zap.String("clientID", clientID), zap.Error(err))
 			break
 		}
 	}
 
 	// Remove connection on disconnect
 	s.mu.Lock()
-	delete(s.analyticsConn, clientID)
+	for i, conn := range s.analyticsConn[clientID] {
+		if conn == conn {
+			s.analyticsConn[clientID] = append(s.analyticsConn[clientID][:i], s.analyticsConn[clientID][i+1:]...)
+			break
+		}
+	}
 	s.mu.Unlock()
 }
 
-// API to list all connected clients
+// ListClients API to list all connected clients
 func (s *WebSocketServer) ListClients(c *gin.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
