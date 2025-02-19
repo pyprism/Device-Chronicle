@@ -72,10 +72,10 @@ func TestHandleClient(t *testing.T) {
 
 			// Verify client connection
 			ts.wsServer.mu.RLock()
-			client, exists := ts.wsServer.clients[tt.clientID]
+			clients, exists := ts.wsServer.clients[tt.clientID]
 			ts.wsServer.mu.RUnlock()
 			assert.True(t, exists)
-			assert.NotNil(t, client)
+			assert.NotEmpty(t, clients)
 
 			// Test message sending
 			message := []byte("test message")
@@ -163,9 +163,10 @@ func TestHandleAnalytics(t *testing.T) {
 			// Verify analytics connection
 			time.Sleep(50 * time.Millisecond)
 			ts.wsServer.mu.RLock()
-			_, exists := ts.wsServer.analyticsConn[tt.clientID]
+			analyticsConns, exists := ts.wsServer.analyticsConn[tt.clientID]
 			ts.wsServer.mu.RUnlock()
 			assert.True(t, exists)
+			assert.NotEmpty(t, analyticsConns)
 		})
 	}
 }
@@ -197,7 +198,7 @@ func TestListClients(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.setupClients {
-				ts.wsServer.clients["test-client"] = &websocket.Conn{}
+				ts.wsServer.clients["test-client"] = []*websocket.Conn{}
 			}
 
 			w := httptest.NewRecorder()
