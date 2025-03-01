@@ -211,6 +211,14 @@ function webSocket() {
         const data = JSON.parse(event.data);
         const time = new Date().toLocaleTimeString();
 
+        // Debug storage data
+        console.log("Storage data:", {
+            free_ram: data.free_ram,
+            used_ram: data.used_ram,
+            used_ram_percentage: data.used_ram_percentage,
+            swap_used: data.swap_used
+        });
+
         // Update time for all charts
         option.xAxis.data.push(time);
         networkOption.xAxis.data.push(time);
@@ -260,15 +268,15 @@ function webSocket() {
             networkOption.series[1].data.shift();
         }
 
-        // Update storage chart data
-        storageOption.series[0].data.push(seriesData[3]);
-        storageOption.series[1].data.push(seriesData[4]);
-        storageOption.series[2].data.push(seriesData[5]);
+        // Update storage chart data correctly
+        if (data.free_ram) storageOption.series[0].data.push(seriesData[3].value);
+        if (data.used_ram) storageOption.series[1].data.push(seriesData[4].value);
+        if (data.used_ram_percentage) storageOption.series[2].data.push(seriesData[5].value);
 
         // Add swap data if available
         if (data.swap_used) {
             const swapData = formatValue(data.swap_used);
-            storageOption.series[3].data.push(swapData);
+            storageOption.series[3].data.push(swapData.value);
 
             if (storageOption.series[3].data.length > 500) {
                 storageOption.series[3].data.shift();
@@ -283,13 +291,23 @@ function webSocket() {
 
         // Update disk chart if disk data is available
         if (data.disk_used && data.disk_free) {
-            const usedValue = formatValue(data.disk_used).value;
-            const freeValue = formatValue(data.disk_free).value;
+            const usedData = formatValue(data.disk_used);
+            const freeData = formatValue(data.disk_free);
+            const diskUnit = usedData.unit || freeData.unit || '';
 
             diskOption.series[0].data = [
-                {value: usedValue, name: 'Used Space'},
-                {value: freeValue, name: 'Free Space'}
+                {value: usedData.value, name: 'Used Space', unit: diskUnit},
+                {value: freeData.value, name: 'Free Space', unit: diskUnit}
             ];
+
+            // Update tooltip and label formatter to include the unit
+            diskOption.tooltip.formatter = function(params) {
+                return `${params.name}: ${params.value} ${params.data.unit} (${params.percent}%)`;
+            };
+
+            diskOption.series[0].label.formatter = function(params) {
+                return `${params.name}: ${params.value} ${params.data.unit} (${params.percent}%)`;
+            };
         }
 
         // Configure tooltips
@@ -315,7 +333,7 @@ function webSocket() {
         chartDevice.setOption(option);
         charts.network.setOption(networkOption);
         charts.storage.setOption(storageOption);
-        charts.disk.setOption(diskOption); // Always update the disk chart
+        charts.disk.setOption(diskOption);
 
         updateStatCards(data);
     };
