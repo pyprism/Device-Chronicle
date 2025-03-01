@@ -21,6 +21,7 @@ Device Chronicle is a lightweight system monitoring tool that collects and visua
 1. Start the server:
    ```bash
    # run this commands from the server directory
+   cp .env.example .env
    # change the .env file to your needs
    docker compose -f docker-compose.production.yaml build
    docker compose -f docker-compose.production.yaml up -d
