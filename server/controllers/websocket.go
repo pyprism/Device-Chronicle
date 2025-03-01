@@ -108,8 +108,18 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 // ServeAnalyticsPage Serve analytics HTML page
 func (s *WebSocketServer) ServeAnalyticsPage(c *gin.Context) {
 	clientID := c.Param("client_id")
+
+	// Get list of all connected clients for the dropdown
+	s.mu.RLock()
+	clientIDs := make([]string, 0, len(s.clients))
+	for client := range s.clients {
+		clientIDs = append(clientIDs, client)
+	}
+	s.mu.RUnlock()
+
 	c.HTML(http.StatusOK, "analytics.html", gin.H{
 		"client_id": clientID,
+		"clients":   clientIDs,
 	})
 }
 

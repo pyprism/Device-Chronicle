@@ -90,13 +90,19 @@ func TestServeAnalyticsPage(t *testing.T) {
 	ts.router.LoadHTMLGlob("../templates/*")
 	ts.router.GET("/analytics/:client_id", ts.wsServer.ServeAnalyticsPage)
 
+	// Add test clients to the WebSocketServer
+	testClients := []string{"client-1", "client-2", "client-3"}
+	for _, clientID := range testClients {
+		ts.wsServer.clients[clientID] = []*websocket.Conn{}
+	}
+
 	tests := []struct {
 		name     string
 		clientID string
 		wantCode int
 	}{
-		{"valid client", "test-client", http.StatusOK},
-		{"empty client id", "", http.StatusNotFound}, // Changed expected status
+		{"valid client", "client-1", http.StatusOK},
+		{"empty client id", "", http.StatusNotFound},
 	}
 
 	for _, tt := range tests {
@@ -113,6 +119,11 @@ func TestServeAnalyticsPage(t *testing.T) {
 			assert.Equal(t, tt.wantCode, w.Code)
 			if tt.wantCode == http.StatusOK {
 				assert.Contains(t, w.Body.String(), "Device Chronicle")
+
+				// Check that each client ID appears in the response
+				for _, clientID := range testClients {
+					assert.Contains(t, w.Body.String(), clientID)
+				}
 			}
 		})
 	}
