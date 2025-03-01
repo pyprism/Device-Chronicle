@@ -71,11 +71,42 @@ func Linux() (map[string]interface{}, error) {
 	}
 
 	// Get disk usage
-	diskUsage, _ := disk.Usage("/")
-	data["disk_total"] = utils.FormatBytes(diskUsage.Total)
-	data["disk_free"] = utils.FormatBytes(diskUsage.Free)
-	data["disk_used"] = utils.FormatBytes(diskUsage.Used)
-	data["disk_usage_percent"] = fmt.Sprintf("%.2f%%", diskUsage.UsedPercent)
+	// Get total disk usage across all partitions
+	partitions, _ := disk.Partitions(true)
+	var totalDiskSpace uint64
+	var usedDiskSpace uint64
+	var freeDiskSpace uint64
+
+	for _, partition := range partitions {
+		// Skip pseudo filesystems
+		if !strings.HasPrefix(partition.Fstype, "ext") &&
+			!strings.HasPrefix(partition.Fstype, "xfs") &&
+			!strings.HasPrefix(partition.Fstype, "btrfs") &&
+			!strings.HasPrefix(partition.Fstype, "ntfs") &&
+			partition.Fstype != "vfat" &&
+			partition.Fstype != "fat32" {
+			continue
+		}
+
+		diskUsage, err := disk.Usage(partition.Mountpoint)
+		if err != nil {
+			continue // Skip partitions with errors
+		}
+		totalDiskSpace += diskUsage.Total
+		usedDiskSpace += diskUsage.Used
+		freeDiskSpace += diskUsage.Free
+	}
+
+	// Calculate used percentage
+	usedPercent := 0.0
+	if totalDiskSpace > 0 {
+		usedPercent = float64(usedDiskSpace) / float64(totalDiskSpace) * 100.0
+	}
+
+	data["disk_total"] = utils.FormatBytes(totalDiskSpace)
+	data["disk_free"] = utils.FormatBytes(freeDiskSpace)
+	data["disk_used"] = utils.FormatBytes(usedDiskSpace)
+	data["disk_usage_percent"] = fmt.Sprintf("%.2f%%", usedPercent)
 
 	// load average
 	loadAvg, _ := load.Avg()
