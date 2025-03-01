@@ -27,6 +27,7 @@ func randomNumber(min, max interface{}) (interface{}, error) {
 func DummyData() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["packets_sent"], _ = randomNumber(500, 1000)
+	data["cpu_core_1"], _ = randomNumber(50.0, 60.99)
 	data["packets_receive"], _ = randomNumber(500, 1000)
 	data["average_chipset_temp"], _ = randomNumber(40.0, 70.0)
 	data["cpu_temp"], _ = randomNumber(50.0, 60.0)
@@ -35,5 +36,10 @@ func DummyData() map[string]interface{} {
 	data["user_ram"], _ = randomNumber(50, 90)
 	data["used_ram_percentage"], _ = randomNumber(60.0, 80.0)
 	data["hostname"] = "dummy-hostname"
+	data["load_avg"], _ = randomNumber(0.1, 5.0)
+	data["process_count"], _ = randomNumber(100, 300)
+	data["swap_usage"], _ = randomNumber(0, 100)
+	data["cpu_freq"], _ = randomNumber(1.0, 3.5)
+	data["uptime"] = "1d 2h 3m"
 	return data
 }
