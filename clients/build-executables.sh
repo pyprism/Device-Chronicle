@@ -6,7 +6,7 @@ if [[ -z "$version" ]]; then
   exit 1
 fi
 package_name=chronicle-client
-
+binary_name=$package_name
 
 # The full list of the platforms is at: https://golang.org/doc/install/source#environment
 platforms=(
@@ -32,16 +32,17 @@ do
         os="macOS"
     fi
 
-    output_name=$package_name'-'$version'-'$os'-'$GOARCH
-    zip_name=$output_name
+    output_binary=$binary_name
     if [ $os = "windows" ]; then
-        output_name+='.exe'
+        output_binary+='.exe'
     fi
 
-    echo "Building release/$output_name..."
+    archive_name=$package_name'-'$version'-'$os'-'$GOARCH
+
+    echo "Building release/$output_binary for $os-$GOARCH..."
     env GOOS=$GOOS GOARCH=$GOARCH go build \
         -ldflags="-s -w" \
-      -o release/$output_name
+      -o release/$output_binary
     if [ $? -ne 0 ]; then
         echo 'An error has occurred! Aborting the script execution...'
         exit 1
@@ -49,11 +50,12 @@ do
 
     pushd release > /dev/null
     if [ $os = "windows" ]; then
-        zip $zip_name.zip $output_name
-        rm $output_name
+        zip $archive_name.zip $output_binary
+        rm $output_binary
     else
-        chmod a+x $output_name
-        gzip $output_name
+        chmod a+x $output_binary
+        gzip -c $output_binary > $archive_name.gz
+        rm $output_binary
     fi
     popd > /dev/null
 done
