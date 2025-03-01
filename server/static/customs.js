@@ -210,14 +210,7 @@ function webSocket() {
 
         const data = JSON.parse(event.data);
         const time = new Date().toLocaleTimeString();
-
-        // Debug storage data
-        console.log("Storage data:", {
-            free_ram: data.free_ram,
-            used_ram: data.used_ram,
-            used_ram_percentage: data.used_ram_percentage,
-            swap_used: data.swap_used
-        });
+        //console.log(data);
 
         // Update time for all charts
         option.xAxis.data.push(time);
