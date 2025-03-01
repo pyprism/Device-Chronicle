@@ -100,6 +100,7 @@ By creating a lightweight monitoring tool with a web interface accessible from a
 ## TODO
  - [ ] Add more system metrics
  - [ ] Windows support
+ - [ ] Maybe add a database to store historical data
 
 ## Status
  Beta
