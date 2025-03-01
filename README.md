@@ -36,6 +36,10 @@ Device Chronicle is a lightweight system monitoring tool that collects and visua
    ```bash
    ./chronicle-client --install --server http://SERVER_IP:8000 --client DEVICE_NAME
    ```
+    ###### Note:
+     - Download the client binary from the [releases page](https://github.com/pyprism/Device-Chronicle/releases)
+     - Replace `SERVER_IP` with the IP address of the server and `DEVICE_NAME` with a unique name for the device
+
 
 2. The client will automatically start and connect to the server
 
