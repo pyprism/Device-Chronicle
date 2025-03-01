@@ -94,9 +94,24 @@ func Linux() (map[string]interface{}, error) {
 	data["swap_percent"] = fmt.Sprintf("%.2f%%", swap.UsedPercent)
 
 	// cpu freq
-	cpuInfo, _ := cpu.Info()
-	if len(cpuInfo) > 0 {
-		data["cpu_mhz"] = fmt.Sprintf("%.0f MHz", cpuInfo[0].Mhz)
+	// Get current CPU frequencies for all cores
+	freqs, err := cpu.Percent(100*time.Millisecond, true)
+	if err == nil && len(freqs) > 0 {
+		// Get max frequency as reference
+		cpuInfo, _ := cpu.Info()
+		maxFreq := 0.0
+		if len(cpuInfo) > 0 {
+			maxFreq = cpuInfo[0].Mhz
+		}
+
+		// Calculate current frequency based on utilization percentage
+		currentFreq := 0.0
+		for _, f := range freqs {
+			currentFreq += (f / 100.0) * maxFreq
+		}
+		currentFreq /= float64(len(freqs))
+
+		data["cpu_mhz"] = fmt.Sprintf("%.0f MHz", currentFreq)
 	}
 
 	// Format uptime
