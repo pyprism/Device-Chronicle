@@ -4,9 +4,12 @@ import (
 	"device-chronicle-client/utils"
 	"fmt"
 	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/host"
+	"github.com/shirou/gopsutil/v4/load"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/net"
+	"github.com/shirou/gopsutil/v4/process"
 	"github.com/shirou/gopsutil/v4/sensors"
 	"strings"
 	"time"
@@ -60,6 +63,49 @@ func Linux() (map[string]interface{}, error) {
 	for i, percentage := range cpu_ {
 		data[fmt.Sprintf("cpu_core_%d", i)] = fmt.Sprintf("%.2f", percentage)
 	}
+
+	// Get overall CPU percentage
+	totalCPU, _ := cpu.Percent(0, false)
+	if len(totalCPU) > 0 {
+		data["cpu_usage"] = fmt.Sprintf("%.2f%%", totalCPU[0])
+	}
+
+	// Get disk usage
+	diskUsage, _ := disk.Usage("/")
+	data["disk_total"] = utils.FormatBytes(diskUsage.Total)
+	data["disk_free"] = utils.FormatBytes(diskUsage.Free)
+	data["disk_used"] = utils.FormatBytes(diskUsage.Used)
+	data["disk_usage_percent"] = fmt.Sprintf("%.2f%%", diskUsage.UsedPercent)
+
+	// load average
+	loadAvg, _ := load.Avg()
+	data["load_1"] = fmt.Sprintf("%.2f", loadAvg.Load1)
+	data["load_5"] = fmt.Sprintf("%.2f", loadAvg.Load5)
+	data["load_15"] = fmt.Sprintf("%.2f", loadAvg.Load15)
+
+	// number iof running processes
+	processes, _ := process.Processes()
+	data["process_count"] = len(processes)
+
+	// swap memory
+	swap, _ := mem.SwapMemory()
+	data["swap_used"] = utils.FormatBytes(swap.Used)
+	data["swap_total"] = utils.FormatBytes(swap.Total)
+	data["swap_percent"] = fmt.Sprintf("%.2f%%", swap.UsedPercent)
+
+	// cpu freq
+	cpuInfo, _ := cpu.Info()
+	if len(cpuInfo) > 0 {
+		data["cpu_mhz"] = fmt.Sprintf("%.0f MHz", cpuInfo[0].Mhz)
+	}
+
+	// Format uptime
+	uptimeDuration := time.Duration(host_.Uptime) * time.Second
+	days := int(uptimeDuration.Hours()) / 24
+	hours := int(uptimeDuration.Hours()) % 24
+	minutes := int(uptimeDuration.Minutes()) % 60
+	data["uptime"] = fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
+
 	// Add data to map
 	data["average_chipset_temp"] = formattedAverage
 	data["cpu_temp"] = fmt.Sprintf("%.2f°C", cpuTemp)
