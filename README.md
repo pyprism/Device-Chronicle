@@ -103,6 +103,7 @@ By creating a lightweight monitoring tool with a web interface accessible from a
 4. Identify potential bottlenecks affecting game performance
 
 ## TODO
+ - [ ] Code cleanup and more tests
  - [ ] Add more system metrics
  - [ ] Windows support
  - [ ] Maybe add a database to store historical data

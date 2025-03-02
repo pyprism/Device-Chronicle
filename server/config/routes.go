@@ -11,4 +11,5 @@ func RegisterRoutes(router *gin.Engine) {
 	router.GET("/analytics/:client_id", wsServer.ServeAnalyticsPage)
 	router.GET("/analytics_ws/:client_id", wsServer.HandleAnalytics)
 	router.GET("/clients", wsServer.ListClients)
+	router.GET("/", wsServer.ServeIndexPage)
 }
