@@ -290,7 +290,7 @@
 
             <div class="error" id="error">
                 <i class="bi bi-exclamation-triangle-fill fs-1"></i>
-                <p class="mt-2">Failed to connect to WebSocket server. Please try again later.</p>
+                <p class="mt-2">Failed to connect to WebSocket server. Maybe the device is down. Please try again later.</p>
                 <button class="btn btn-outline-primary mt-2" id="retryButton">Retry Connection</button>
             </div>
         </div>
@@ -302,6 +302,6 @@
 </script>
 <script src="/static/libs/bootstrap.bundle.min.js"></script>
 <script src="/static/libs/echarts.min.js"></script>
-<script src="/static/customs.js"></script>
+<script src="/static/customs.js?v={{ .version }}"></script>
 </body>
 </html>

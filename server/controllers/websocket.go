@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type Option func(*WebSocketServer)
@@ -117,9 +118,12 @@ func (s *WebSocketServer) ServeAnalyticsPage(c *gin.Context) {
 	}
 	s.mu.RUnlock()
 
+	version := time.Now().Unix()
+
 	c.HTML(http.StatusOK, "analytics.html", gin.H{
 		"client_id": clientID,
 		"clients":   clientIDs,
+		"version":   version, // to bypass cdn cache for custom.js
 	})
 }
 
