@@ -1,12 +1,13 @@
-package data
+package fetch
 
 import (
+	"device-chronicle-client/models"
 	"device-chronicle-client/os"
 	"fmt"
 	"runtime"
 )
 
-func FetchData() (map[string]interface{}, error) {
+func FetchData() (*models.System, error) {
 	if runtime.GOOS == "linux" {
 		return os.Linux()
 	}

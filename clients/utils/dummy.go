@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"device-chronicle-client/models"
 	"fmt"
 	"math/rand"
 	"time"
@@ -24,22 +25,44 @@ func randomNumber(min, max interface{}) (interface{}, error) {
 }
 
 // DummyData returns dummy data for testing purposes.
-func DummyData() map[string]interface{} {
-	data := make(map[string]interface{})
-	data["packets_sent"], _ = randomNumber(500, 1000)
-	data["cpu_core_1"], _ = randomNumber(50.0, 60.99)
-	data["packets_receive"], _ = randomNumber(500, 1000)
-	data["average_chipset_temp"], _ = randomNumber(40.0, 70.0)
-	data["cpu_temp"], _ = randomNumber(50.0, 60.0)
-	data["total_ram"], _ = randomNumber(50, 80)
-	data["free_ram"], _ = randomNumber(60, 80)
-	data["user_ram"], _ = randomNumber(50, 90)
-	data["used_ram_percentage"], _ = randomNumber(60.0, 80.0)
-	data["hostname"] = "dummy-hostname"
-	data["load_avg"], _ = randomNumber(0.1, 5.0)
-	data["process_count"], _ = randomNumber(100, 300)
-	data["swap_usage"], _ = randomNumber(0, 100)
-	data["cpu_freq"], _ = randomNumber(1.0, 3.5)
-	data["uptime"] = "1d 2h 3m"
-	return data
+func DummyData() *models.System {
+	s := models.NewSystem()
+
+	// Set fixed fields
+	num, _ := randomNumber(500, 1000)
+	s.PacketsSent = fmt.Sprintf("%v", num)
+
+	num, _ = randomNumber(500, 1000)
+	s.PacketsReceive = fmt.Sprintf("%v", num)
+
+	num, _ = randomNumber(40.0, 70.0)
+	s.AverageChipsetTemp = fmt.Sprintf("%.2f°C", num)
+
+	// Set CPU cores
+	for i := 0; i < 8; i++ {
+		val, _ := randomNumber(50.0, 60.99)
+		s.CPUCores[fmt.Sprintf("cpu_core_%d", i)] = fmt.Sprintf("%.2f", val)
+	}
+
+	s.CPUTemp = "50.0°C"
+	s.TotalRAM = "16GB"
+	s.FreeRAM = "8GB"
+	s.UsedRAM = "8GB"
+	s.UsedRAMPercentage = "50%"
+	s.Hostname = "dummy-host"
+	s.Uptime = "1d 2h 3m"
+	s.LoadAvg1 = "0.5"
+	s.LoadAvg5 = "0.6"
+	s.LoadAvg15 = "0.7"
+	s.ProcessCount = 100
+	s.CPUUsage = "50%"
+	s.CPUMHZ = "3.2GHz"
+	s.DiskTotal = "1TB"
+	s.DiskFree = "500GB"
+	s.DiskUsed = "500GB"
+	s.DiskUsagePercent = "50%"
+	s.SwapUsed = "1GB"
+	s.SwapTotal = "2GB"
+	s.SwapPercent = "50%"
+	return s
 }

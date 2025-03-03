@@ -1,6 +1,7 @@
 package os
 
 import (
+	"device-chronicle-client/models"
 	"device-chronicle-client/utils"
 	"fmt"
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -17,8 +18,8 @@ import (
 
 var prevNetworkUsage *net.IOCountersStat
 
-func Linux() (map[string]interface{}, error) {
-	data := make(map[string]interface{})
+func Linux() (*models.System, error) {
+	s := models.NewSystem()
 
 	// Get data from sensors and system
 	v, _ := sensors.SensorsTemperatures()
@@ -46,32 +47,31 @@ func Linux() (map[string]interface{}, error) {
 
 	// Calculate network usage difference
 	if prevNetworkUsage != nil {
-		data["packets_sent"] = utils.FormatBytes(network[0].BytesSent - prevNetworkUsage.BytesSent)
-		data["packets_receive"] = utils.FormatBytes(network[0].BytesRecv - prevNetworkUsage.BytesRecv)
+		s.PacketsSent = utils.FormatBytes(network[0].BytesSent - prevNetworkUsage.BytesSent)
+		s.PacketsReceive = utils.FormatBytes(network[0].BytesRecv - prevNetworkUsage.BytesRecv)
 	} else {
-		data["packets_sent"] = utils.FormatBytes(network[0].BytesSent)
-		data["packets_receive"] = utils.FormatBytes(network[0].BytesRecv)
+		s.PacketsSent = utils.FormatBytes(network[0].BytesSent)
+		s.PacketsReceive = utils.FormatBytes(network[0].BytesRecv)
 	}
 
 	// Update previous network usage
 	prevNetworkUsage = &network[0]
 
 	average = sum / float64(counter)
-	formattedAverage := fmt.Sprintf("%.2f°C", average)
+	s.AverageChipsetTemp = fmt.Sprintf("%.2f°C", average)
 
-	// CPU usage per core
+	// CPU usage per core - stored in the CPUCores map
 	for i, percentage := range cpu_ {
-		data[fmt.Sprintf("cpu_core_%d", i)] = fmt.Sprintf("%.2f", percentage)
+		s.CPUCores[fmt.Sprintf("cpu_core_%d", i)] = fmt.Sprintf("%.2f", percentage)
 	}
 
 	// Get overall CPU percentage
 	totalCPU, _ := cpu.Percent(0, false)
 	if len(totalCPU) > 0 {
-		data["cpu_usage"] = fmt.Sprintf("%.2f%%", totalCPU[0])
+		s.CPUUsage = fmt.Sprintf("%.2f%%", totalCPU[0])
 	}
 
 	// Get disk usage
-	// Get total disk usage across all partitions
 	partitions, _ := disk.Partitions(true)
 	var totalDiskSpace uint64
 	var usedDiskSpace uint64
@@ -103,46 +103,43 @@ func Linux() (map[string]interface{}, error) {
 		usedPercent = float64(usedDiskSpace) / float64(totalDiskSpace) * 100.0
 	}
 
-	data["disk_total"] = utils.FormatBytes(totalDiskSpace)
-	data["disk_free"] = utils.FormatBytes(freeDiskSpace)
-	data["disk_used"] = utils.FormatBytes(usedDiskSpace)
-	data["disk_usage_percent"] = fmt.Sprintf("%.2f%%", usedPercent)
+	s.DiskTotal = utils.FormatBytes(totalDiskSpace)
+	s.DiskFree = utils.FormatBytes(freeDiskSpace)
+	s.DiskUsed = utils.FormatBytes(usedDiskSpace)
+	s.DiskUsagePercent = fmt.Sprintf("%.2f%%", usedPercent)
 
-	// load average
+	// Load average
 	loadAvg, _ := load.Avg()
-	data["load_1"] = fmt.Sprintf("%.2f", loadAvg.Load1)
-	data["load_5"] = fmt.Sprintf("%.2f", loadAvg.Load5)
-	data["load_15"] = fmt.Sprintf("%.2f", loadAvg.Load15)
+	s.LoadAvg1 = fmt.Sprintf("%.2f", loadAvg.Load1)
+	s.LoadAvg5 = fmt.Sprintf("%.2f", loadAvg.Load5)
+	s.LoadAvg15 = fmt.Sprintf("%.2f", loadAvg.Load15)
 
-	// number iof running processes
+	// Number of running processes
 	processes, _ := process.Processes()
-	data["process_count"] = len(processes)
+	s.ProcessCount = len(processes)
 
-	// swap memory
+	// Swap memory
 	swap, _ := mem.SwapMemory()
-	data["swap_used"] = utils.FormatBytes(swap.Used)
-	data["swap_total"] = utils.FormatBytes(swap.Total)
-	data["swap_percent"] = fmt.Sprintf("%.2f%%", swap.UsedPercent)
+	s.SwapUsed = utils.FormatBytes(swap.Used)
+	s.SwapTotal = utils.FormatBytes(swap.Total)
+	s.SwapPercent = fmt.Sprintf("%.2f%%", swap.UsedPercent)
 
-	// cpu freq
-	// Get current CPU frequencies for all cores
+	// CPU frequency
 	freqs, err := cpu.Percent(100*time.Millisecond, true)
 	if err == nil && len(freqs) > 0 {
-		// Get max frequency as reference
 		cpuInfo, _ := cpu.Info()
 		maxFreq := 0.0
 		if len(cpuInfo) > 0 {
 			maxFreq = cpuInfo[0].Mhz
 		}
 
-		// Calculate current frequency based on utilization percentage
 		currentFreq := 0.0
 		for _, f := range freqs {
 			currentFreq += (f / 100.0) * maxFreq
 		}
 		currentFreq /= float64(len(freqs))
 
-		data["cpu_mhz"] = fmt.Sprintf("%.0f MHz", currentFreq)
+		s.CPUMHZ = fmt.Sprintf("%.0f MHz", currentFreq)
 	}
 
 	// Format uptime
@@ -150,15 +147,15 @@ func Linux() (map[string]interface{}, error) {
 	days := int(uptimeDuration.Hours()) / 24
 	hours := int(uptimeDuration.Hours()) % 24
 	minutes := int(uptimeDuration.Minutes()) % 60
-	data["uptime"] = fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
+	s.Uptime = fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
 
-	// Add data to map
-	data["average_chipset_temp"] = formattedAverage
-	data["cpu_temp"] = fmt.Sprintf("%.2f°C", cpuTemp)
-	data["total_ram"] = utils.FormatBytes(memory.Total)
-	data["free_ram"] = utils.FormatBytes(memory.Free)
-	data["used_ram"] = utils.FormatBytes(memory.Used)
-	data["used_ram_percentage"] = fmt.Sprintf("%.2f%%", memory.UsedPercent)
-	data["hostname"] = host_.Hostname
-	return data, nil
+	// Add remaining fields
+	s.CPUTemp = fmt.Sprintf("%.2f°C", cpuTemp)
+	s.TotalRAM = utils.FormatBytes(memory.Total)
+	s.FreeRAM = utils.FormatBytes(memory.Free)
+	s.UsedRAM = utils.FormatBytes(memory.Used)
+	s.UsedRAMPercentage = fmt.Sprintf("%.2f%%", memory.UsedPercent)
+	s.Hostname = host_.Hostname
+
+	return s, nil
 }
