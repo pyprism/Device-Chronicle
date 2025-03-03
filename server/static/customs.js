@@ -105,6 +105,7 @@ function webSocket() {
             trigger: 'axis'
         },
         legend: {
+            type: 'scroll',
             data: ['Average Chipset Temp', 'CPU Temp', 'CPU Usage', 'Free RAM', 'Used RAM', 'Used RAM Percentage', 'Packets Received', 'Packets Sent'],
             selected: {
                 'Packets Received': false,
