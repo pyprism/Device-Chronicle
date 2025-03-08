@@ -12,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v4/net"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/shirou/gopsutil/v4/sensors"
+	"os"
 	"strings"
 	"time"
 )
@@ -35,32 +36,142 @@ func Linux() (*models.System, error) {
 	return s, nil
 }
 
+// readSysfsTemp reads temperature from sysfs (for ARM devices)
+func readSysfsTemp(path string) (float64, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+	var temp float64
+	_, err = fmt.Sscanf(string(data), "%f", &temp)
+	// Convert from milliCelsius to Celsius
+	return temp / 1000.0, err
+}
+
 // collectTemperatureData gathers temperature information
 func collectTemperatureData(s *models.System) {
-	temps, _ := sensors.SensorsTemperatures()
+	if isARM() {
+		// ARM-specific code - scan multiple thermal zones
+		cpuTemp := 0.0
+		chipsetTemps := []float64{}
 
-	sum := 0.0
-	counter := 0
-	cpuTemp := 0.0
+		// Try to find all thermal zones
+		for i := 0; i < 10; i++ {
+			zonePath := fmt.Sprintf("/sys/class/thermal/thermal_zone%d/temp", i)
+			typePath := fmt.Sprintf("/sys/class/thermal/thermal_zone%d/type", i)
 
-	for _, value := range temps {
-		// chipset sensors
-		if strings.Contains(value.SensorKey, "wmi") {
-			sum += value.Temperature
-			counter++
+			if _, err := os.Stat(zonePath); os.IsNotExist(err) {
+				continue
+			}
+
+			temp, err := readSysfsTemp(zonePath)
+			if err != nil {
+				continue
+			}
+
+			zoneType := "unknown"
+			if typeData, err := os.ReadFile(typePath); err == nil {
+				zoneType = strings.TrimSpace(string(typeData))
+			}
+
+			if strings.Contains(strings.ToLower(zoneType), "cpu") || i == 0 {
+				cpuTemp = temp
+			} else {
+				chipsetTemps = append(chipsetTemps, temp)
+				s.Custom[fmt.Sprintf("thermal_zone_%d_%s", i, zoneType)] = fmt.Sprintf("%.2f°C", temp)
+			}
 		}
-		// cpu temp
-		if strings.Contains(value.SensorKey, "tctl") {
-			cpuTemp = value.Temperature
+
+		s.CPUTemp = fmt.Sprintf("%.2f°C", cpuTemp)
+
+		if len(chipsetTemps) > 0 {
+			sum := 0.0
+			for _, temp := range chipsetTemps {
+				sum += temp
+			}
+			s.AverageChipsetTemp = fmt.Sprintf("%.2f°C", sum/float64(len(chipsetTemps)))
+		}
+	} else {
+		// Enhanced x86 approach for various motherboard manufacturers
+		temps, _ := sensors.SensorsTemperatures()
+
+		// For chipset/motherboard temperatures
+		chipsetTemps := []float64{}
+		cpuTemp := 0.0
+
+		// Track if we've found at least one sensor
+		foundCPUSensor := false
+
+		// Common sensor patterns by manufacturer
+		chipsetPatterns := []string{
+			"wmi",     // Gigabyte
+			"pch_",    // Intel PCH
+			"system",  // Common name
+			"board",   // Common name
+			"chipset", // Generic
+			"sbr",     // South Bridge
+			"nbr",     // North Bridge
+			"asus",    // ASUS
+			"msi",     // MSI
+			"asrock",  // ASRock
+			"mb",      // Motherboard
+		}
+
+		cpuPatterns := []string{
+			"tctl",    // AMD Tctl
+			"tdie",    // AMD Tdie
+			"core",    // Intel Core temps
+			"cpu",     // Generic CPU
+			"package", // CPU package
+			"k10temp", // AMD K10
+		}
+
+		// First pass: look for CPU temperature
+		for _, value := range temps {
+			sensorKey := strings.ToLower(value.SensorKey)
+
+			// Check for CPU temperature sensors
+			for _, pattern := range cpuPatterns {
+				if strings.Contains(sensorKey, pattern) {
+					cpuTemp = value.Temperature
+					foundCPUSensor = true
+					// Prefer core/package sensors if found
+					if strings.Contains(sensorKey, "core") ||
+						strings.Contains(sensorKey, "package") {
+						break
+					}
+				}
+			}
+		}
+
+		// Second pass: look for chipset temperatures
+		for _, value := range temps {
+			sensorKey := strings.ToLower(value.SensorKey)
+
+			for _, pattern := range chipsetPatterns {
+				if strings.Contains(sensorKey, pattern) {
+					chipsetTemps = append(chipsetTemps, value.Temperature)
+					// Add individual sensor to custom fields
+					s.Custom[fmt.Sprintf("sensor_%s", value.SensorKey)] = fmt.Sprintf("%.2f°C", value.Temperature)
+					break
+				}
+			}
+		}
+
+		// Calculate average chipset temperature
+		if len(chipsetTemps) > 0 {
+			sum := 0.0
+			for _, temp := range chipsetTemps {
+				sum += temp
+			}
+			s.AverageChipsetTemp = fmt.Sprintf("%.2f°C", sum/float64(len(chipsetTemps)))
+		}
+
+		// If we found a CPU temperature, use it
+		if foundCPUSensor {
+			s.CPUTemp = fmt.Sprintf("%.2f°C", cpuTemp)
 		}
 	}
-
-	if counter > 0 {
-		average := sum / float64(counter)
-		s.AverageChipsetTemp = fmt.Sprintf("%.2f°C", average)
-	}
-
-	s.CPUTemp = fmt.Sprintf("%.2f°C", cpuTemp)
 }
 
 // collectNetworkData gathers network usage information
@@ -80,7 +191,7 @@ func collectNetworkData(s *models.System) {
 
 // collectCPUData gathers CPU usage and frequency information
 func collectCPUData(s *models.System) {
-	// Per-core CPU usage
+	// Per-core CPU usage (works for both architectures)
 	cpu_, _ := cpu.Percent(1*time.Second, true)
 	for i, percentage := range cpu_ {
 		s.CPUCores[fmt.Sprintf("cpu_core_%d", i)] = fmt.Sprintf("%.2f", percentage)
@@ -92,22 +203,33 @@ func collectCPUData(s *models.System) {
 		s.CPUUsage = fmt.Sprintf("%.2f%%", totalCPU[0])
 	}
 
-	// CPU frequency
-	freqs, err := cpu.Percent(100*time.Millisecond, true)
-	if err == nil && len(freqs) > 0 {
-		cpuInfo, _ := cpu.Info()
-		maxFreq := 0.0
-		if len(cpuInfo) > 0 {
-			maxFreq = cpuInfo[0].Mhz
+	// Get CPU frequency based on architecture
+	if isARM() {
+		// ARM-specific frequency reading
+		freqPath := "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"
+		if freqData, err := os.ReadFile(freqPath); err == nil {
+			var freq float64
+			fmt.Sscanf(string(freqData), "%f", &freq)
+			s.CPUMHZ = fmt.Sprintf("%.0f MHz", freq/1000) // Convert KHz to MHz
 		}
+	} else {
+		// x86 frequency calculation
+		freqs, err := cpu.Percent(100*time.Millisecond, true)
+		if err == nil && len(freqs) > 0 {
+			cpuInfo, _ := cpu.Info()
+			maxFreq := 0.0
+			if len(cpuInfo) > 0 {
+				maxFreq = cpuInfo[0].Mhz
+			}
 
-		currentFreq := 0.0
-		for _, f := range freqs {
-			currentFreq += (f / 100.0) * maxFreq
+			currentFreq := 0.0
+			for _, f := range freqs {
+				currentFreq += (f / 100.0) * maxFreq
+			}
+			currentFreq /= float64(len(freqs))
+
+			s.CPUMHZ = fmt.Sprintf("%.0f MHz", currentFreq)
 		}
-		currentFreq /= float64(len(freqs))
-
-		s.CPUMHZ = fmt.Sprintf("%.0f MHz", currentFreq)
 	}
 }
 
