@@ -1,5 +1,4 @@
-# Device Chronicle [![Go Server](https://github.com/pyprism/Device-Chronicle/actions/workflows/go.yaml/badge.svg)](https://github.com/pyprism/Device-Chronicle/actions/workflows/go.yaml)
-
+# Device Chronicle [![Client](https://github.com/pyprism/Device-Chronicle/actions/workflows/client.yaml/badge.svg)](https://github.com/pyprism/Device-Chronicle/actions/workflows/client.yaml) [![Server](https://github.com/pyprism/Device-Chronicle/actions/workflows/server.yaml/badge.svg)](https://github.com/pyprism/Device-Chronicle/actions/workflows/server.yaml)
 Device Chronicle is a lightweight system monitoring tool that collects and visualizes realtime performance metrics from your devices. It consists of a server component (web dashboard) and client agents that run on monitored systems.
 
 ## Features
@@ -35,11 +34,13 @@ Device Chronicle is a lightweight system monitoring tool that collects and visua
 
 1. Install the client on each system you want to monitor:
    ```bash
+   chmod +x ./chronicle-client
    ./chronicle-client --install --server http://SERVER_IP:8000 --client DEVICE_NAME
    ```
     ###### Note:
      - Download the client binary from the [releases page](https://github.com/pyprism/Device-Chronicle/releases)
-     - Replace `SERVER_IP` with the IP address of the server and `DEVICE_NAME` with a unique name for the device
+     - Replace `SERVER_IP` with the IP address of the server or domain name and `DEVICE_NAME` with a unique name for the device
+     - In case for updating the client, stop the service first `systemctl --user stop chronicle-client`
 
 
 2. The client will automatically start and connect to the server
@@ -111,7 +112,7 @@ By creating a lightweight monitoring tool with a web interface accessible from a
 ## Status
  Beta
 ## Screenshot
-<img src="/image.png" width="80%" alt="ugly screenshot">
+<img src="/screenshot.png" width="80%" alt="ugly screenshot">
 
 ## Development
 
