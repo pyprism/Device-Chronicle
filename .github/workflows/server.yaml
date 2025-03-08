@@ -1,4 +1,4 @@
-name: Go Server
+name: Server
 
 on: [push]
 
