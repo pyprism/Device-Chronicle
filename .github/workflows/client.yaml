@@ -1,4 +1,4 @@
-name: Go Server CI
+name: Go Client
 
 on: [push]
 
@@ -16,12 +16,12 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-          cache-dependency-path: server/go.sum
+          cache-dependency-path: clients/go.sum
       - name: Display Go version
         run: go version
 
       - name: Install dependencies
-        run: cd server && go get .
+        run: cd clients && go get .
 
       - name: Run test
-        run: cd server && go test --race -v ./...
+        run: cd clients && go test --race -v ./...
