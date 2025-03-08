@@ -97,11 +97,17 @@ func (s *WebSocketServer) HandleClient(c *gin.Context) {
 
 	// Remove client when disconnected
 	s.mu.Lock()
-	for i, conn := range s.clients[clientID] {
-		if conn == conn {
-			s.clients[clientID] = append(s.clients[clientID][:i], s.clients[clientID][i+1:]...)
+	connections := s.clients[clientID]
+	for i, c := range connections {
+		if c == conn { // Fixed variable shadowing bug
+			connections = append(connections[:i], connections[i+1:]...)
 			break
 		}
+	}
+	if len(connections) == 0 {
+		delete(s.clients, clientID)
+	} else {
+		s.clients[clientID] = connections // Update the connections list
 	}
 	s.mu.Unlock()
 }
@@ -167,11 +173,19 @@ func (s *WebSocketServer) HandleAnalytics(c *gin.Context) {
 
 	// Remove connection on disconnect
 	s.mu.Lock()
-	for i, conn := range s.analyticsConn[clientID] {
-		if conn == conn {
-			s.analyticsConn[clientID] = append(s.analyticsConn[clientID][:i], s.analyticsConn[clientID][i+1:]...)
+	connections := s.analyticsConn[clientID]
+	for i, c := range connections {
+		if c == conn {
+			connections = append(connections[:i], connections[i+1:]...)
 			break
 		}
+	}
+
+	// If there are no more connections for this client, remove it from the map
+	if len(connections) == 0 {
+		delete(s.analyticsConn, clientID)
+	} else {
+		s.analyticsConn[clientID] = connections
 	}
 	s.mu.Unlock()
 }
