@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -61,7 +60,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to create config: %v", err)
 		}
-		if err := ioutil.WriteFile(configFile, configJSON, 0644); err != nil {
+		if err := os.WriteFile(configFile, configJSON, 0644); err != nil {
 			log.Fatalf("Failed to write config file: %v", err)
 		}
 
@@ -70,11 +69,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to get executable path: %v", err)
 		}
-		execData, err := ioutil.ReadFile(execPath)
+		execData, err := os.ReadFile(execPath)
 		if err != nil {
 			log.Fatalf("Failed to read executable: %v", err)
 		}
-		if err := ioutil.WriteFile(binPath, execData, 0755); err != nil {
+		if err := os.WriteFile(binPath, execData, 0755); err != nil {
 			log.Fatalf("Failed to copy executable: %v", err)
 		}
 
@@ -84,19 +83,19 @@ func main() {
 		serviceFile := filepath.Join(systemdDir, "chronicle-client.service")
 
 		serviceContent := `[Unit]
-Description=Chronicle Client Service
-After=network.target
+                            Description=Chronicle Client Service
+							After=network.target
 
-[Service]
-ExecStart=%s
-Restart=always
-RestartSec=5
+							[Service]
+ 							ExecStart=%s
+                            Restart=always
+                            RestartSec=5
 
-[Install]
-WantedBy=default.target
-`
+                            [Install]
+                            WantedBy=default.target
+                           `
 		serviceContent = fmt.Sprintf(serviceContent, binPath)
-		if err := ioutil.WriteFile(serviceFile, []byte(serviceContent), 0644); err != nil {
+		if err := os.WriteFile(serviceFile, []byte(serviceContent), 0644); err != nil {
 			log.Fatalf("Failed to write service file: %v", err)
 		}
 
@@ -117,7 +116,7 @@ WantedBy=default.target
 	// Load config if exists and no command line args provided
 	if (*serverAddr == "" || *clientName == "") && fileExists(configFile) {
 		fmt.Println("Loading configuration from file...")
-		configData, err := ioutil.ReadFile(configFile)
+		configData, err := os.ReadFile(configFile)
 		if err != nil {
 			log.Fatalf("Failed to read config file: %v", err)
 		}
