@@ -12,7 +12,7 @@ COPY . .
 RUN CGO_ENABLED=1 CGO_CFLAGS="-D_LARGEFILE64_SOURCE" GOOS=linux go build -a -ldflags "-linkmode external -extldflags '-static' -s -w" -o main
 
 # Minimal image for running the application
-FROM alpine:3.21 AS final
+FROM alpine:3.22 AS final
 
 WORKDIR /app
 
