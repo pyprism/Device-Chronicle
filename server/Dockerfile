@@ -1,4 +1,4 @@
-FROM golang:1.24.2-alpine3.21
+FROM golang:1.24.4-alpine3.21
 
 RUN apk add --no-cache inotify-tools gcc g++ musl-dev tzdata
 
