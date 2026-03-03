@@ -1,4 +1,4 @@
-FROM golang:1.24.4-alpine3.21 AS builder
+FROM golang:1.25.5-alpine3.21 AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY . .
 RUN CGO_ENABLED=1 CGO_CFLAGS="-D_LARGEFILE64_SOURCE" GOOS=linux go build -a -ldflags "-linkmode external -extldflags '-static' -s -w" -o main
 
 # Minimal image for running the application
-FROM alpine:3.22 AS final
+FROM alpine:3.23 AS final
 
 WORKDIR /app
 
